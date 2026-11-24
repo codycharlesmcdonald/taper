@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Taper tests</title>
+<!-- Run with: python3 -I -B tools/run_tests.py . tests/index.html
+     Opens the app in a phone-sized frame, drives it, and sets the title to PASSED or FAILED. -->
+<style>
+  body { font: 13px/1.4 ui-monospace, Menlo, monospace; margin: 12px; }
+  iframe { width: 390px; height: 900px; border: 1px solid #ccc; }
+</style>
+<script src="fixtures.js"></script>
+</head>
+<body>
+<pre id="out"></pre>
+<iframe id="app" title="Taper under test"></iframe>
+<script>
+(async function () {
+  "use strict";
+  const out = document.getElementById("out");
+  let passed = 0, failed = 0;
+
+  const log = line => { out.textContent += line + "\n"; };
+  function check(name, ok, detail) {
+    if (ok) { passed++; log("ok   " + name); }
+    else { failed++; log("FAIL " + name + (detail !== undefined ? "  (" + detail + ")" : "")); }
+  }
+  const eq = (name, got, want) => check(name, got === want, "got " + JSON.stringify(got) + ", want " + JSON.stringify(want));
+
+  function open(state) {
+    return new Promise(resolve => {
+      if (state) localStorage.setItem("taper", JSON.stringify(state));
+      else localStorage.removeItem("taper");
+      const f = document.getElementById("app");
+      f.onload = () => resolve(f.contentWindow);
+      f.src = "../docs/index.html?run=" + Math.random();
+    });
+  }
+
+  const pad = n => String(n).padStart(2, "0");
+  const localValue = ms => {
+    const d = new Date(ms);
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  };
+  const saved = () => JSON.parse(localStorage.getItem("taper"));
+
+  try {
+    // ---------- the sums ----------
+    let w = await open(null);
+    let T = w.Taper;
+    const plan = { start: 10, step: 2, every: 7, from: "2026-01-05" };
+    eq("no limit before the plan starts", T.limitOn("2026-01-04", plan), null);
+    eq("limit on the first day", T.limitOn("2026-01-05", plan), 10);
+    eq("limit holds for the first week", T.limitOn("2026-01-11", plan), 10);
+    eq("limit after the first cut", T.limitOn("2026-01-12", plan), 8);
+    eq("limit never goes below 0", T.limitOn("2026-06-01", plan), 0);
+    eq("day the plan reaches 0", T.zeroDay(plan), "2026-02-09");
+    eq("next drop", JSON.stringify(T.nextDrop("2026-01-06", plan)), JSON.stringify({ key: "2026-01-12", limit: 8 }));
+    eq("next drop before the plan starts", JSON.stringify(T.nextDrop("2026-01-01", plan)), JSON.stringify({ key: "2026-01-05", limit: 10 }));
+    eq("no next drop at 0", T.nextDrop("2026-03-01", plan), null);
+    eq("odd start reaches 0 on the last cut", T.zeroDay({ start: 5, step: 2, every: 7, from: "2026-01-05" }), "2026-01-26");
+    eq("adding days across a month", T.addDays("2026-01-30", 3), "2026-02-02");
+    eq("adding days across the clock change", T.addDays("2026-03-07", 2), "2026-03-09");
+    eq("days between across the clock change", T.daysBetween("2026-03-01", "2026-03-15"), 14);
+    eq("since, minutes", T.since(5 * 60000), "5 min");
+    eq("since, hours", T.since(84 * 60000), "1 hr 24 min");
+    eq("since, whole hours", T.since(120 * 60000), "2 hr");
+    eq("since, days", T.since(26 * 3600000), "1 day 2 hr");
+    eq("axis for counts", JSON.stringify(T.niceScale(13, true)), JSON.stringify({ step: 5, top: 15 }));
+    eq("axis for a single cigarette", JSON.stringify(T.niceScale(1, true)), JSON.stringify({ step: 1, top: 1 }));
+    eq("axis for fractions", T.niceScale(0.3, false).step, 0.1);
+    const tidied = T.tidy({ entries: [3, 1, "x", 2, 2, NaN], plan: { start: 0 }, dayStart: 9, range: 12 });
+    eq("tidy keeps numbers, sorted, once each", JSON.stringify(tidied.entries), "[1,2,3]");
+    eq("tidy drops a bad plan", tidied.plan, null);
+    eq("tidy resets a bad day end", tidied.dayStart, 0);
+    eq("tidy resets a bad range", tidied.range, 30);
+    const twoAm = new Date(2026, 4, 10, 2, 0).getTime();
+    eq("2 am with days ending at midnight", T.dayKey(twoAm), "2026-05-10");
+    T.state.dayStart = 4;
+    eq("2 am with days ending at 4 am", T.dayKey(twoAm), "2026-05-09");
+    T.state.dayStart = 0;
+
+    // ---------- a first run ----------
+    let d = w.document;
+    let $ = s => d.querySelector(s);
+    eq("count starts at 0", $("#count").textContent, "0");
+    check("charts wait for the first log", !$("#trends-empty").hidden && $("#trends-body").hidden);
+    check("history says nothing yet", !$("#history-empty").hidden);
+    check("plan form shows with no plan", !$("#plan-form").hidden);
+    eq("suggested start with nothing logged", $("#plan-start").value, "10");
+    check("no meter without a plan", $("#meter").hidden && $("#meter-note").hidden);
+
+    // ---------- logging, undo, the double tap guard ----------
+    $("#log").click();
+    eq("one logged", $("#count").textContent, "1");
+    eq("count note without a plan", $("#count-note").textContent, "cigarette today");
+    check("toast offers undo", !$("#toast").hidden && !$("#toast-undo").hidden);
+    $("#log").click();
+    eq("a fast second tap is ignored", $("#count").textContent, "1");
+    $("#toast-undo").click();
+    eq("undo takes it back", $("#count").textContent, "0");
+    eq("undo is saved", saved().entries.length, 0);
+    check("toast closes after undo", $("#toast").hidden);
+    $("#log").click();
+    eq("logging right after undo works", $("#count").textContent, "1");
+    check("charts show after a log", $("#trends-empty").hidden && !$("#trends-body").hidden);
+    check("since says just now", /just now/.test($("#since").textContent), $("#since").textContent);
+    eq("first log is saved", saved().entries.length, 1);
+
+    // ---------- adding one missed ----------
+    $("#missed-toggle").click();
+    check("missed form opens", !$("#missed").hidden);
+    $("#missed-at").value = localValue(Date.now() + 3600000);
+    $("#missed").requestSubmit();
+    check("a future time is refused", !$("#missed-error").hidden && /hasn't happened/.test($("#missed-error").textContent), $("#missed-error").textContent);
+    $("#missed-at").value = "";
+    $("#missed").requestSubmit();
+    check("an empty time is refused", /Pick a date/.test($("#missed-error").textContent));
+    $("#missed-at").value = localValue(Date.now() - 3 * 60000);
+    $("#missed").requestSubmit();
+    eq("missed one added", T.state.entries.length, 2);
+    check("missed form closes", $("#missed").hidden);
+    check("toast names the added time", /^Added one at /.test($("#toast-text").textContent), $("#toast-text").textContent);
+
+    // ---------- it survives a reload ----------
+    w = await open(saved());
+    T = w.Taper; d = w.document; $ = s => d.querySelector(s);
+    eq("log survives a reload", T.state.entries.length, 2);
+
+    // ---------- a plan ----------
+    $("#plan-start").value = "5";
+    $("#plan-step").value = "1";
+    $("#plan-every").value = "7";
+    $("#plan-from").value = T.dayKey(Date.now());
+    $("#plan-form").dispatchEvent(new w.Event("input", { bubbles: true }));
+    check("preview names the day it reaches 0", /reaches 0 on/.test($("#plan-preview").textContent), $("#plan-preview").textContent);
+    $("#plan-start").value = "";
+    $("#plan-form").requestSubmit();
+    eq("a blank start is refused", T.state.plan, null);
+    $("#plan-start").value = "5";
+    $("#plan-form").requestSubmit();
+    eq("plan saved", JSON.stringify(saved().plan), JSON.stringify({ start: 5, step: 1, every: 7, from: T.dayKey(Date.now()) }));
+    eq("count note shows the limit", $("#count-note").textContent, "of 5 today");
+    const today = Number($("#count").textContent);
+    eq("meter has a segment for each allowed one", $("#meter").children.length, Math.max(5, today));
+    eq("used segments match the count", $("#meter").querySelectorAll(".used").length, Math.min(5, today));
+    check("meter note counts what's left", /left under today's limit/.test($("#meter-note").textContent), $("#meter-note").textContent);
+    check("summary names today's limit", /Today's limit is 5\./.test($("#plan-summary").textContent), $("#plan-summary").textContent);
+    check("summary names the next drop", /drops to 4 on/.test($("#plan-summary").textContent), $("#plan-summary").textContent);
+    check("form closes after saving", $("#plan-form").hidden && !$("#plan-actions").hidden);
+
+    // over the limit
+    const base = Date.now() - 60000;
+    for (let i = 0; i < 6; i++) T.state.entries.push(base - (i + 10) * 1000);
+    T.state.entries.sort((a, b) => a - b);
+    T.render();
+    const now = Number($("#count").textContent);
+    eq("over segments", $("#meter").querySelectorAll(".over").length, now - 5);
+    eq("over note", $("#meter-note").textContent, (now - 5) + " over today's limit");
+
+    // change, then end the plan
+    $("#plan-edit").click();
+    check("change plan opens the form", !$("#plan-form").hidden);
+    eq("form holds the saved plan", $("#plan-start").value, "5");
+    $("#plan-cancel").click();
+    check("cancel closes it", $("#plan-form").hidden);
+    w.confirm = () => true;
+    $("#plan-end").click();
+    eq("plan ended", T.state.plan, null);
+    check("form back for a new plan", !$("#plan-form").hidden);
+    check("meter gone with the plan", $("#meter").hidden);
+
+    // ---------- the files ----------
+    const csv = await T.csvFile().text();
+    const lines = csv.trim().split("\n");
+    eq("CSV header", lines[0], "time,local_time,day");
+    eq("CSV has a line per entry", lines.length - 1, T.state.entries.length);
+    const backup = JSON.parse(await T.backupFile().text());
+    eq("backup holds every entry", backup.entries.length, T.state.entries.length);
+    eq("backup names the app", backup.app, "taper");
+
+    // ---------- charts with a month of made-up logs ----------
+    w = await open(TaperFixtures.month());
+    T = w.Taper; d = w.document; $ = s => d.querySelector(s);
+    const rows = id => d.querySelectorAll(id + " tbody tr").length;
+    eq("30 days in the table", rows("#day-table"), 30);
+    check("limit line drawn", !!$("#day-chart .limit-line"));
+    check("average line drawn", !!$("#day-chart .avg-line"));
+    check("average labelled at its end", !!$("#day-chart .end-label"));
+    eq("legend names all three", d.querySelectorAll("#day-legend li").length, 3);
+    eq("three stats", d.querySelectorAll("#stats .stat").length, 3);
+    check("average compared with the 30 days before", /previous 30 days/.test($("#stats").textContent), $("#stats").textContent);
+    check("within limit counted", /Within limit/.test($("#stats").textContent));
+    eq("24 hours in the time of day table", rows("#hour-table"), 24);
+    check("no bar is wider than 24 px", Array.from(d.querySelectorAll("#day-chart .bar")).every(b => b.getBBox().width <= 24.01));
+    const svg = $("#day-chart svg");
+    check("chart fits the phone", svg.getBoundingClientRect().width <= d.documentElement.clientWidth);
+
+    d.querySelector('.range [data-range="7"]').click();
+    eq("7 days in the table", rows("#day-table"), 7);
+    eq("range is saved", saved().range, 7);
+    eq("7 days marked", d.querySelector('.range [data-range="7"]').getAttribute("aria-checked"), "true");
+    d.querySelector('.range [data-range="0"]').click();
+    eq("all 40 days in the table", rows("#day-table"), 40);
+    check("All has nothing to compare with", !/previous/.test($("#stats").textContent));
+
+    // tooltip: a tap on the newest column, then a tap elsewhere
+    d.querySelector('.range [data-range="30"]').click();
+    const hit = $("#day-chart .hit").getBoundingClientRect();
+    $("#day-chart .hit").dispatchEvent(new w.PointerEvent("pointerdown", { bubbles: true, clientX: hit.right - 2, clientY: hit.top + 60, pointerType: "touch" }));
+    const tip = $("#day-chart .tip");
+    check("tooltip opens on a tap", !tip.hidden);
+    check("tooltip is for today", /^Today/.test(tip.querySelector(".tip-title").textContent), tip.textContent);
+    check("tooltip shows the limit", /limit/.test(tip.textContent), tip.textContent);
+    const width = $("#day-chart svg").clientWidth;
+    check("tooltip stays inside the chart", tip.offsetLeft >= 0 && tip.offsetLeft + tip.offsetWidth <= width + 1, tip.offsetLeft + " + " + tip.offsetWidth + " in " + width);
+    $("#day-chart .hit").dispatchEvent(new w.PointerEvent("pointerdown", { bubbles: true, clientX: hit.left + 2, clientY: hit.top + 60, pointerType: "touch" }));
+    check("tooltip moves to the first day", !/^Today/.test(tip.querySelector(".tip-title").textContent));
+    d.body.dispatchEvent(new w.PointerEvent("pointerdown", { bubbles: true }));
+    check("a tap elsewhere closes it", tip.hidden);
+
+    // ---------- history ----------
+    eq("history shows two weeks", d.querySelectorAll("#history-list .day").length, 14);
+    $("#history-more").click();
+    eq("show earlier adds two more weeks", d.querySelectorAll("#history-list .day").length, 28);
+    const before = T.state.entries.length;
+    d.querySelector("#history-list .time").click();
+    check("tapping a time asks first", !!d.querySelector("#history-list .confirm"));
+    d.querySelector("#history-list .confirm .link").click();
+    check("keep leaves it", !d.querySelector("#history-list .confirm") && T.state.entries.length === before);
+    d.querySelector("#history-list .time").click();
+    d.querySelector("#history-list .confirm .remove").click();
+    eq("remove takes one out", T.state.entries.length, before - 1);
+    eq("removal is saved", saved().entries.length, before - 1);
+
+    // ---------- day end setting ----------
+    const sel = $("#day-start");
+    sel.value = "4";
+    sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+    eq("day end is saved", saved().dayStart, 4);
+    eq("time of day chart starts at 4 am", $("#hour-table tbody tr").firstChild.textContent, "4 AM to 5 AM");
+
+    // ---------- a long log draws weeks ----------
+    w = await open(TaperFixtures.year());
+    d = w.document; $ = s => d.querySelector(s);
+    eq("long range switches to weeks", $("#day-title").textContent, "Average per day, by week");
+    eq("weeks table header", d.querySelector("#day-table th").textContent, "Week of");
+    check("week rows", rows("#day-table") >= 28 && rows("#day-table") <= 30, rows("#day-table"));
+  } catch (e) {
+    failed++;
+    log("FAIL the run stopped: " + (e && e.stack ? e.stack : e));
+  }
+
+  log("\n" + passed + " passed, " + failed + " failed");
+  document.title = failed ? "FAILED" : "PASSED";
+})();
+</script>
+</body>
+</html>

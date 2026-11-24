@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Taper seed</title>
+<!-- Fills the app's storage with a made-up log, then opens the app. For screenshots:
+     tests/seed.html?f=month (or fresh, week, year) and optionally &range=7, 30, 90 or 0. -->
+<script src="fixtures.js"></script>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var name = q.get("f") || "month";
+    var state = window.TaperFixtures[name]();
+    if (q.has("range")) state.range = Number(q.get("range"));
+    localStorage.setItem("taper", JSON.stringify(state));
+    location.replace("../docs/index.html");
+  })();
+</script>
+</head>
+<body></body>
+</html>
