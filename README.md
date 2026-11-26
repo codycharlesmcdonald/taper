@@ -1,6 +1,6 @@
 # Taper
 
-A small phone app for cutting down on a bad habit. Pick what you're counting (cigs, vapes, drinks), tap once each
+A small phone app for cutting down on a bad habit. Pick what you're counting (cigs, doomscrolls, impulse buys), tap once each
 time, and after a few days Taper sets a daily limit that steps down on a schedule. Watch the count against time.
 
 Live at https://pantsonmyhead.com/taper/ (`bash tools/publish.sh` copies `docs/` into the pantsonmyhead.com

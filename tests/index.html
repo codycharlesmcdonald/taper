@@ -75,6 +75,10 @@
     eq("one energy drink", T.single("energy drinks"), "energy drink");
     eq("one patch", T.single("patches"), "patch");
     eq("one candy", T.single("candies"), "candy");
+    for (const [many, each] of [["doomscrolls", "doomscroll"], ["regrettable drinks", "regrettable drink"],
+      ["late-night snacks", "late-night snack"], ["impulse buys", "impulse buy"], ["nose picks", "nose pick"]]) {
+      eq("one of the ideas: " + many, T.single(many), each);
+    }
     eq("made plan starts at the average", T.makePlanFrom(14.4, "2026-01-05").start, 14);
     eq("made plan cuts about a tenth", T.makePlanFrom(14.4, "2026-01-05").step, 1);
     eq("made plan cuts at least one", T.makePlanFrom(3, "2026-01-05").step, 1);
@@ -102,7 +106,7 @@
     check("the app waits behind it", $("#today").offsetHeight === 0 && $("#settings").offsetHeight === 0);
     check("install hint shows outside the Home Screen app", !$("#install-hint").hidden);
     d.querySelectorAll("#welcome .picks button")[2].click();
-    eq("an idea fills the box", $("#unit").value, "drinks");
+    eq("an idea fills the box", $("#unit").value, "regrettable drinks");
     $("#unit").value = "";
     $("#unit-form").requestSubmit();
     eq("an empty box counts cigs", saved().unit, "cigs");
