@@ -86,7 +86,7 @@
     eq("tidy drops a bad plan", tidied.plan, null);
     eq("tidy resets a bad day end", tidied.dayStart, 0);
     eq("tidy resets a bad range", tidied.range, 30);
-    eq("an old log counts cigarettes", tidied.unit, "cigarettes");
+    eq("an old log has no unit yet", tidied.unit, null);
     eq("a fresh start has no unit", T.tidy({ entries: [] }).unit, null);
     eq("tidy keeps a unit, tidied", T.tidy({ unit: "  Energy   Drinks ", entries: [] }).unit, "energy drinks");
     const twoAm = new Date(2026, 4, 10, 2, 0).getTime();
@@ -247,6 +247,22 @@
     $("#unit-setting").dispatchEvent(new w.Event("change", { bubbles: true }));
     eq("unit changed in Settings", saved().unit, "energy drinks");
     eq("log button follows", $("#log").textContent, "Log an energy drink");
+    $("#about").click();
+    check("About Taper shows the welcome", d.body.classList.contains("first-run"));
+    eq("with the unit filled in", $("#unit").value, "energy drinks");
+    eq("and a way back", $("#unit-submit").textContent, "Back to my log");
+    $("#unit-form").requestSubmit();
+    check("back to the log", !d.body.classList.contains("first-run") && saved().unit === "energy drinks");
+
+    // ---------- a log from before the unit was asked ----------
+    const old = TaperFixtures.week();
+    delete old.unit;
+    w = await open(old);
+    d = w.document; $ = s => d.querySelector(s);
+    check("an older log gets the welcome", d.body.classList.contains("first-run"));
+    $("#unit").value = "cigs";
+    $("#unit-form").requestSubmit();
+    eq("its log is all still there", saved().entries.length, old.entries.length);
 
     // ---------- charts with a month of made-up logs ----------
     w = await open(TaperFixtures.month());

@@ -12,8 +12,8 @@ then on it opens full screen from its own icon and works with no signal.
 ## What it does
 
 - **Welcome**: shown until a unit is picked: what Taper does, and What are you counting? Every label uses the
-  unit after that (Log a cig, Cigs per day). Change it in Settings. Logs from before the unit existed count
-  cigarettes.
+  unit after that (Log a cig, Cigs per day). Change it in Settings; About Taper there shows the welcome again.
+  A log from before the unit existed gets the welcome once and keeps every entry.
 - **Today**: the count so far, today's limit with a bar of what's left, time since the last one, a big
   Log a cigarette button with Undo, and Add one I missed for one logged late.
 - **Over time**: 7 days, 30 days, 90 days or All. Daily average against the period before, the total, and days

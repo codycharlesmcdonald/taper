@@ -1,6 +1,6 @@
-/* Keeps Taper working offline. Every file is served from the cache at once and refreshed from the network
-   in the background, so an update shows up the next time the app opens. */
-const CACHE = "taper-v2";
+/* Keeps Taper working offline: every file comes from the network when there is one and from the cache when
+   there isn't. */
+const CACHE = "taper-v3";
 const FILES = [
   "./",
   "index.html",
@@ -24,19 +24,16 @@ self.addEventListener("activate", ev => {
   );
 });
 
+// Network first, so a new version shows the moment it's published; the cache is for when there's no signal.
 self.addEventListener("fetch", ev => {
   const req = ev.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
-  ev.respondWith(caches.open(CACHE).then(async cache => {
-    const hit = await cache.match(req, { ignoreSearch: true });
-    const fresh = fetch(req).then(res => {
-      if (res.ok) cache.put(req, res.clone());
-      return res;
-    });
-    if (hit) {
-      ev.waitUntil(fresh.catch(() => {}));
-      return hit;
-    }
-    return fresh;
-  }));
+  ev.respondWith(caches.open(CACHE).then(cache =>
+    fetch(req)
+      .then(res => {
+        if (res.ok) cache.put(req, res.clone());
+        return res;
+      })
+      .catch(() => cache.match(req, { ignoreSearch: true }).then(hit => hit || Response.error()))
+  ));
 });

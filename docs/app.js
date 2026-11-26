@@ -19,13 +19,13 @@
   const BACKUP_FIRST_AFTER = 3;                // days of logs before the first backup reminder
   const BACKUP_EVERY = 14;                     // days between backup reminders after that
   const UNIT_MAX = 24;
-  const LEGACY_UNIT = "cigarettes";            // logs from before the unit was asked were all cigarettes
 
   let state = load();
   let renderedDay = null;
   let historyShown = HISTORY_PAGE;
   let pendingRemoval = null;                   // timestamp waiting for Remove or Keep
   let editingPlan = false;
+  let welcomeOpen = false;                     // About Taper in Settings shows the welcome again
   let lastLogAt = 0;
   let toastTimer = null;
   let toastEntry = null;
@@ -58,7 +58,7 @@
       s.plan = { start: raw.plan.start, step: raw.plan.step, every: raw.plan.every, from: raw.plan.from };
       if (raw.plan.auto === true) s.plan.auto = true;
     }
-    s.unit = cleanUnit(raw.unit) || (s.entries.length || s.plan ? LEGACY_UNIT : null);
+    s.unit = cleanUnit(raw.unit);
     s.autoPlanned = raw.autoPlanned === true || !!s.plan;
     if (Number.isFinite(raw.backedUp) && raw.backedUp > 0) s.backedUp = raw.backedUp;
     if (DAY_START_CHOICES.includes(raw.dayStart)) s.dayStart = raw.dayStart;
@@ -1043,6 +1043,7 @@
     ev.preventDefault();
     const input = $("#unit");
     state.unit = cleanUnit(input.value) || cleanUnit(input.placeholder);
+    welcomeOpen = false;
     save();
     render();
     window.scrollTo(0, 0);
@@ -1085,8 +1086,14 @@
 
   function render() {
     const now = Date.now();
-    document.body.classList.toggle("first-run", !state.unit);
-    if (!state.unit) { renderedDay = dayKey(now); return; }
+    const welcome = !state.unit || welcomeOpen;
+    document.body.classList.toggle("first-run", welcome);
+    if (welcome) {
+      if (state.unit && !$("#unit").value) $("#unit").value = state.unit;
+      $("#unit-submit").textContent = state.entries.length ? "Back to my log" : "Start logging";
+      renderedDay = dayKey(now);
+      return;
+    }
     const counts = countsByDay();
     autoPlan(now, counts);
     renderToday(now, counts);
@@ -1103,6 +1110,7 @@
     fillSelect($("#day-start"), DAY_START_CHOICES, v => (v === 0 ? "Midnight" : hourName(v)));
 
     $("#unit-form").addEventListener("submit", pickUnit);
+    $("#about").addEventListener("click", () => { welcomeOpen = true; $("#unit").value = ""; render(); window.scrollTo(0, 0); });
     for (const b of document.querySelectorAll("#welcome .picks button")) {
       b.addEventListener("click", () => { $("#unit").value = b.textContent; });
     }
@@ -1165,7 +1173,7 @@
     setInterval(() => {
       const now = Date.now();
       if (dayKey(now) !== renderedDay) render();
-      else if (state.unit) renderSince(now);
+      else if (!document.body.classList.contains("first-run")) renderSince(now);
     }, 30000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
     window.addEventListener("storage", ev => { if (ev.key === KEY) { state = load(); render(); } });

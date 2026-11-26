@@ -50,7 +50,7 @@
       d.setDate(d.getDate() - plan.daysAgo);
       p = { start: plan.start, step: plan.step, every: plan.every, from: keyOf(d) };
     }
-    return { v: 1, entries: entries.sort((a, b) => a - b), plan: p, dayStart: 0, range: 30 };
+    return { v: 1, unit: "cigs", entries: entries.sort((a, b) => a - b), plan: p, dayStart: 0, range: 30 };
   }
 
   window.TaperFixtures = {
