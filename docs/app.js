@@ -23,7 +23,7 @@
   let state = load();
   let renderedDay = null;
   let historyShown = HISTORY_PAGE;
-  let pendingRemoval = null;                   // timestamp waiting for Remove or Keep
+  let editing = null;                          // the logged time open in History for changing or removing
   let editingPlan = false;
   let welcomeOpen = false;                     // About Taper in Settings shows the welcome again
   let lastLogAt = 0;
@@ -265,7 +265,7 @@
     const i = state.entries.indexOf(t);
     if (i < 0) return;
     state.entries.splice(i, 1);
-    if (pendingRemoval === t) pendingRemoval = null;
+    if (editing === t) editing = null;
     save();
     render();
   }
@@ -976,34 +976,71 @@
     for (const t of times) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "time" + (pendingRemoval === t ? " picked" : "");
+      b.className = "time" + (editing === t ? " picked" : "");
       b.textContent = F.time.format(t);
-      b.setAttribute("aria-label", "Remove the one at " + F.time.format(t));
-      b.addEventListener("click", () => { pendingRemoval = pendingRemoval === t ? null : t; render(); });
+      b.setAttribute("aria-label", "Change or remove the one at " + F.time.format(t));
+      b.setAttribute("aria-expanded", String(editing === t));
+      b.addEventListener("click", () => { editing = editing === t ? null : t; render(); });
       wrap.appendChild(b);
     }
     li.appendChild(wrap);
 
-    if (pendingRemoval !== null && times.includes(pendingRemoval)) {
-      const t = pendingRemoval;
-      const c = document.createElement("div");
-      c.className = "confirm";
-      const q = document.createElement("span");
-      q.textContent = "Remove the one at " + F.time.format(t) + "?";
-      const yes = document.createElement("button");
-      yes.type = "button";
-      yes.className = "danger";
-      yes.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Remove';
-      yes.addEventListener("click", () => removeEntry(t));
-      const no = document.createElement("button");
-      no.type = "button";
-      no.className = "link";
-      no.textContent = "Keep";
-      no.addEventListener("click", () => { pendingRemoval = null; render(); });
-      c.append(q, yes, no);
-      li.appendChild(c);
-    }
+    if (editing !== null && times.includes(editing)) li.appendChild(editRow(editing));
     return li;
+  }
+
+  // Change the time of one logged, or remove it. Saving the same minute changes nothing.
+  function editRow(t) {
+    const form = document.createElement("form");
+    form.className = "edit";
+    form.noValidate = true;
+    const label = document.createElement("label");
+    label.textContent = "Change to";
+    const input = document.createElement("input");
+    input.type = "datetime-local";
+    input.className = "edit-at";
+    input.value = localInputValue(t);
+    input.id = "edit-at";
+    label.htmlFor = input.id;
+    const err = document.createElement("p");
+    err.className = "error";
+    err.hidden = true;
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "solid";
+    save.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Save';
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Remove';
+    remove.addEventListener("click", () => {
+      removeEntry(t);
+      toast("Removed the one at " + F.time.format(t) + ".", null);
+    });
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "link";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => { editing = null; render(); });
+    const buttons = document.createElement("div");
+    buttons.className = "buttons";
+    buttons.append(save, remove, cancel);
+    form.append(label, input, err, buttons);
+    form.addEventListener("submit", ev => {
+      ev.preventDefault();
+      const next = input.value ? new Date(input.value).getTime() : NaN;
+      const fail = text => { err.textContent = text; err.hidden = false; };
+      if (!Number.isFinite(next)) return fail("Pick a date and time.");
+      if (Math.floor(next / 60000) === Math.floor(t / 60000)) { editing = null; render(); return; }
+      if (next > Date.now()) return fail("That time hasn't happened yet.");
+      if (state.entries.includes(next)) return fail("There's already one at that exact time.");
+      const i = state.entries.indexOf(t);
+      if (i >= 0) state.entries.splice(i, 1);
+      editing = null;
+      insertEntry(next);
+      toast("Moved to " + F.time.format(next) + " on " + shortDay(dayKey(next)) + ".", null);
+    });
+    return form;
   }
 
   // ---------- settings and backups ----------

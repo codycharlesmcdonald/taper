@@ -25,7 +25,7 @@ then on it opens full screen from its own icon and works with no signal.
   the form. By hand: start at a number a day and cut by 1 to 5 every 3 to 14 days, from a start date. The starting number
   fills in from the recent daily average. The summary names today's limit, the next drop and the day it
   reaches 0.
-- **History**: every day with its times. Tap a time to remove it.
+- **History**: every day with its times. Tap a time to change it (Save) or remove it.
 - **Settings**: when your day ends (midnight to 5 am, so a 1 am cigarette can count toward the day before),
   Save a backup, Restore a backup, and Export CSV. Today shows a backup reminder after 3 days of logs with no
   backup, then 14 days after the last one.

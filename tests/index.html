@@ -317,12 +317,31 @@
     $("#history-more").click();
     eq("show earlier adds two more weeks", d.querySelectorAll("#history-list .day").length, 28);
     const before = T.state.entries.length;
-    d.querySelector("#history-list .time").click();
-    check("tapping a time asks first", !!d.querySelector("#history-list .confirm"));
-    d.querySelector("#history-list .confirm .link").click();
-    check("keep leaves it", !d.querySelector("#history-list .confirm") && T.state.entries.length === before);
-    d.querySelector("#history-list .time").click();
-    d.querySelector("#history-list .confirm .danger").click();
+    const firstTime = () => d.querySelector("#history-list .time");
+    const newest = T.state.entries.find(t => T.dayKey(t) === T.dayKey(Date.now()));   // the first time shown: today's earliest
+    firstTime().click();
+    const edit = () => d.querySelector("#history-list .edit");
+    check("tapping a time opens change or remove", !!edit());
+    eq("with its time filled in", edit().querySelector("input").value, localValue(newest));
+    edit().querySelector(".link").click();
+    check("cancel closes it untouched", !edit() && T.state.entries.length === before);
+    firstTime().click();
+    edit().requestSubmit();
+    check("saving the same minute changes nothing", !edit() && T.state.entries.includes(newest));
+    firstTime().click();
+    edit().querySelector("input").value = localValue(Date.now() + 3600000);
+    edit().requestSubmit();
+    check("a future time is refused", !!edit() && /hasn't happened/.test(edit().querySelector(".error").textContent));
+    const moved = newest - 10 * 60000;
+    edit().querySelector("input").value = localValue(moved);
+    edit().requestSubmit();
+    const movedTo = new Date(localValue(moved)).getTime();
+    check("changing moves it", !T.state.entries.includes(newest) && T.state.entries.includes(movedTo));
+    eq("changing keeps the count", T.state.entries.length, before);
+    check("change is saved", saved().entries.includes(movedTo));
+    check("toast names the new time", /^Moved to /.test($("#toast-text").textContent), $("#toast-text").textContent);
+    firstTime().click();
+    edit().querySelector(".danger").click();
     eq("remove takes one out", T.state.entries.length, before - 1);
     eq("removal is saved", saved().entries.length, before - 1);
 

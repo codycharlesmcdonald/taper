@@ -338,10 +338,12 @@ th { color: var(--ink-2); font-weight: 600; }
 .times { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 2px; }
 .time { min-height: 36px; padding: 6px 0; border: 0; background: none; color: var(--ink-2); font-size: 15px; font-variant-numeric: tabular-nums; }
 .time:active { opacity: 0.55; }
-.time.picked { color: var(--danger); text-decoration: line-through; }
+.time.picked { color: var(--tint-ink); font-weight: 650; }
 .times .none { color: var(--muted); font-size: 15px; padding: 6px 0; }
-.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 6px; font-size: 15px; }
-.confirm .danger { min-height: 40px; padding: 8px 14px; }
+.edit { margin-top: 8px; }
+.edit label { display: block; color: var(--ink-2); font-size: 15px; margin: 0 0 6px; }
+.edit .buttons { margin-top: 10px; }
+.edit .error { margin-top: 6px; }
 
 /* Settings */
 #settings .field { margin-bottom: 6px; }
