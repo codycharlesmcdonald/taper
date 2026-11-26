@@ -1,6 +1,6 @@
 /* Keeps Taper working offline. Every file is served from the cache at once and refreshed from the network
    in the background, so an update shows up the next time the app opens. */
-const CACHE = "taper-v1";
+const CACHE = "taper-v2";
 const FILES = [
   "./",
   "index.html",

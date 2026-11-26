@@ -1,7 +1,7 @@
 {
   "name": "Taper",
   "short_name": "Taper",
-  "description": "Log each cigarette, step your daily limit down, and watch the trend.",
+  "description": "Log a bad habit, step your daily limit down, and watch the trend.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

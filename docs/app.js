@@ -1,4 +1,4 @@
-/* Taper: log each cigarette, set a daily limit that steps down, and watch the trend.
+/* Taper: log each time you do the thing you're cutting down on, get a daily limit that steps down, and watch the trend.
    Everything lives in this browser's local storage under one key; nothing is sent anywhere. */
 (function () {
   "use strict";
@@ -13,6 +13,13 @@
   const TOAST_MS = 8000;
   const HISTORY_PAGE = 14;
   const WEEKLY_AFTER = 120;                    // ranges longer than this many days draw one column per week
+  const AUTO_PLAN_DAYS = 3;                    // full days logged before Taper makes a plan
+  const AUTO_PLAN_EVERY = 7;                   // the plan it makes cuts once a week...
+  const AUTO_PLAN_WEEKS = 10;                  // ...by about a tenth of the start, so it reaches 0 in about ten weeks
+  const BACKUP_FIRST_AFTER = 3;                // days of logs before the first backup reminder
+  const BACKUP_EVERY = 14;                     // days between backup reminders after that
+  const UNIT_MAX = 24;
+  const LEGACY_UNIT = "cigarettes";            // logs from before the unit was asked were all cigarettes
 
   let state = load();
   let renderedDay = null;
@@ -29,7 +36,7 @@
   // ---------- storage ----------
 
   function blank() {
-    return { v: 1, entries: [], plan: null, dayStart: 0, range: 30 };
+    return { v: 1, unit: null, entries: [], plan: null, autoPlanned: false, dayStart: 0, range: 30, backedUp: 0 };
   }
 
   function validPlan(p) {
@@ -47,10 +54,22 @@
       const times = raw.entries.filter(n => typeof n === "number" && Number.isFinite(n)).map(Math.round);
       s.entries = Array.from(new Set(times)).sort((a, b) => a - b);
     }
-    if (validPlan(raw.plan)) s.plan = { start: raw.plan.start, step: raw.plan.step, every: raw.plan.every, from: raw.plan.from };
+    if (validPlan(raw.plan)) {
+      s.plan = { start: raw.plan.start, step: raw.plan.step, every: raw.plan.every, from: raw.plan.from };
+      if (raw.plan.auto === true) s.plan.auto = true;
+    }
+    s.unit = cleanUnit(raw.unit) || (s.entries.length || s.plan ? LEGACY_UNIT : null);
+    s.autoPlanned = raw.autoPlanned === true || !!s.plan;
+    if (Number.isFinite(raw.backedUp) && raw.backedUp > 0) s.backedUp = raw.backedUp;
     if (DAY_START_CHOICES.includes(raw.dayStart)) s.dayStart = raw.dayStart;
     if (RANGES.includes(raw.range)) s.range = raw.range;
     return s;
+  }
+
+  function cleanUnit(u) {
+    if (typeof u !== "string") return null;
+    u = u.replace(/\s+/g, " ").trim().toLowerCase().slice(0, UNIT_MAX).trim();
+    return u || null;
   }
 
   function load() {
@@ -66,7 +85,7 @@
   }
 
   // ---------- days ----------
-  // A day is named by its local date, YYYY-MM-DD. With a later day start, a cigarette at 1 am belongs to the day before.
+  // A day is named by its local date, YYYY-MM-DD. With a later day start, one logged at 1 am belongs to the day before.
 
   const pad = n => String(n).padStart(2, "0");
   const keyOf = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
@@ -149,6 +168,20 @@
   const one = v => (Math.round(v * 10) / 10).toFixed(1);
   const plural = (n, word, words) => n + " " + (n === 1 ? word : words);
   const mean = list => list.reduce((a, b) => a + b, 0) / list.length;
+  const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
+
+  // The unit is kept as typed, plural ("cigs"); one of them drops the plural ending ("cig").
+  function single(unit) {
+    const words = unit.split(" ");
+    let last = words.pop();
+    if (/(ss|us|is)$/.test(last)) { /* glass, bus, this: already single */ }
+    else if (/(ches|shes|sses|xes|zes)$/.test(last)) last = last.slice(0, -2);
+    else if (/[^aeiou]ies$/.test(last)) last = last.slice(0, -3) + "y";
+    else if (/s$/.test(last)) last = last.slice(0, -1);
+    return words.concat(last).join(" ");
+  }
+  const unitWord = n => (n === 1 ? single(state.unit) : state.unit);
+  const article = w => (/^[aeiou]/i.test(w) ? "an " : "a ");
 
   function since(ms) {
     const min = Math.floor(ms / 60000);
@@ -167,14 +200,35 @@
     const limit = limitOn(today);
     $("#today-date").textContent = longDay(today);
     $("#count").textContent = count;
-    $("#count-note").textContent = limit === null ? (count === 1 ? "cigarette today" : "cigarettes today") : "of " + limit + " today";
+    $("#count-note").textContent = limit === null ? unitWord(count) + " today" : "of " + limit + " today";
+    const each = single(state.unit);
+    $("#log").textContent = "Log " + article(each) + each;
     renderMeter(count, limit);
     renderSince(now);
+    renderNudge(now);
+  }
+
+  // Reminds once there's a few days of log and no recent backup, since the log lives only on this phone.
+  function renderNudge(now) {
+    const box = $("#backup-nudge");
+    const first = state.entries[0];
+    let due = false, text = "";
+    if (first !== undefined) {
+      if (!state.backedUp) {
+        due = now - first > BACKUP_FIRST_AFTER * DAY_MS;
+        text = "Your log lives only on this phone. Save a backup to Files so it survives a lost phone or a cleared browser.";
+      } else {
+        due = now - state.backedUp > BACKUP_EVERY * DAY_MS && state.entries[state.entries.length - 1] > state.backedUp;
+        text = "Your last backup was " + plural(Math.floor((now - state.backedUp) / DAY_MS), "day", "days") + " ago.";
+      }
+    }
+    box.hidden = !due;
+    if (due) $("#backup-nudge-text").textContent = text;
   }
 
   function renderSince(now) {
     const last = state.entries[state.entries.length - 1];
-    let text = "Tap the button each time you smoke one.";
+    let text = "Tap the button each time.";
     if (last !== undefined) text = now - last < 60000 ? "Last one just now" : "Last one " + since(now - last) + " ago";
     $("#since").textContent = text;
   }
@@ -443,8 +497,8 @@
     const n = r.days.length;
     const hasLimit = r.days.some(d => d.limit !== null);
     const hasAvg = r.days.some(d => d.avg !== null);
-    $("#day-title").textContent = "Cigarettes per day";
-    const items = [{ key: "bar", label: "Cigarettes" }];
+    $("#day-title").textContent = cap(state.unit) + " per day";
+    const items = [{ key: "bar", label: cap(state.unit) }];
     if (hasAvg) items.push({ key: "avg", label: "7-day average" });
     if (hasLimit) items.push({ key: "limit", label: "Daily limit" });
     legend(items);
@@ -462,16 +516,16 @@
       tickWidth: n <= 7 ? 34 : 50,
       tickFromEnd: true,
       endLabel: hasAvg,
-      label: "Cigarettes per day from " + longDay(r.start) + " to today. Show the numbers below the chart for every value.",
+      label: cap(state.unit) + " per day from " + longDay(r.start) + " to today. Show the numbers below the chart for every value.",
       rows: p => {
-        const rows = [{ key: "bar", value: String(p.value), label: p.value === 1 ? "cigarette" : "cigarettes" }];
+        const rows = [{ key: "bar", value: String(p.value), label: unitWord(p.value) }];
         if (p.avg !== null) rows.push({ key: "avg", value: one(p.avg), label: "7-day average" });
         if (p.limit !== null) rows.push({ key: "limit", value: String(p.limit), label: "limit" });
         return rows;
       }
     });
 
-    const head = ["Day", "Cigarettes", "7-day avg"];
+    const head = ["Day", cap(state.unit), "7-day avg"];
     if (hasLimit) head.push("Limit");
     table("#day-table", head, r.days.slice().reverse().map(d => {
       const row = [shortDay(d.key), String(d.count), d.avg === null ? "" : one(d.avg)];
@@ -498,7 +552,7 @@
       tickWidth: 50,
       tickFromEnd: true,
       endLabel: false,
-      label: "Average cigarettes per day for each week since " + longDay(r.start) + ". Show the numbers below the chart for every value.",
+      label: "Average " + state.unit + " per day for each week since " + longDay(r.start) + ". Show the numbers below the chart for every value.",
       rows: p => {
         const rows = [{ key: "bar", value: one(p.value), label: "a day on average" }];
         if (p.limit !== null) rows.push({ key: "limit", value: one(p.limit), label: "average limit" });
@@ -538,7 +592,7 @@
       integer: false,
       tickEvery: 6,
       endLabel: false,
-      label: "Average cigarettes per day in each hour of the day. Show the numbers below the chart for every value.",
+      label: "Average " + state.unit + " per day in each hour of the day. Show the numbers below the chart for every value.",
       rows: p => [
         { key: "bar", value: one(p.value), label: "a day on average" },
         { key: null, value: String(p.count), label: "in " + plural(n, "day", "days") }
@@ -714,12 +768,39 @@
 
   // ---------- plan ----------
 
-  function suggestedStart(now, counts) {
+  // The average of the last week of full days (today isn't over yet), or null before the first full day.
+  function recentAverage(now, counts) {
     const today = dayKey(now), first = firstDay(today);
-    if (!first || first === today) return 10;
+    if (!first || first === today) return null;
     const days = [];
     for (let k = addDays(today, -1); k >= first && days.length < 7; k = addDays(k, -1)) days.push(counts.get(k) || 0);
-    return Math.min(99, Math.max(1, Math.round(mean(days))));
+    return mean(days);
+  }
+
+  function suggestedStart(now, counts) {
+    const avg = recentAverage(now, counts);
+    return avg === null ? 10 : Math.min(99, Math.max(1, Math.round(avg)));
+  }
+
+  const fullDays = now => {
+    const today = dayKey(now), first = firstDay(today);
+    return first ? daysBetween(first, today) : 0;
+  };
+
+  // After a few full days of logs, and only once, Taper makes a plan: start at the recent average and cut about a
+  // tenth of it each week. Ending or changing the plan is up to the person from then on.
+  function makePlanFrom(avg, today) {
+    const start = Math.min(99, Math.max(1, Math.round(avg)));
+    return { start, step: Math.max(1, Math.round(start / AUTO_PLAN_WEEKS)), every: AUTO_PLAN_EVERY, from: today, auto: true };
+  }
+
+  function autoPlan(now, counts) {
+    if (state.plan || state.autoPlanned || !state.unit || fullDays(now) < AUTO_PLAN_DAYS) return false;
+    state.plan = makePlanFrom(recentAverage(now, counts), dayKey(now));
+    state.autoPlanned = true;
+    save();
+    toast("Taper made your plan. See Plan below.", null);
+    return true;
   }
 
   function readPlanForm() {
@@ -748,13 +829,24 @@
 
   function renderPlan(now, counts) {
     const today = dayKey(now), p = state.plan, form = $("#plan-form");
-    const showForm = !p || editingPlan;
+    const waiting = !p && !state.autoPlanned && !editingPlan;
+    const showForm = !waiting && (!p || editingPlan);
+    $("#plan-edit").textContent = p ? "Change plan" : "Set my own plan";
+    $("#plan-end").hidden = !p;
     if (showForm && form.hidden) fillPlanForm(now, counts);
     form.hidden = !showForm;
     $("#plan-actions").hidden = showForm;
-    $("#plan-cancel").hidden = !p;
+    $("#plan-cancel").hidden = !p && state.autoPlanned;
 
     const summary = $("#plan-summary");
+    if (waiting) {
+      const left = AUTO_PLAN_DAYS - fullDays(now);
+      summary.hidden = false;
+      summary.textContent = state.entries.length
+        ? "Log as usual for " + plural(left, "more day", "more days") + ". Then Taper makes a plan from how often you do it."
+        : "Log as usual for a few days. Then Taper makes a plan from how often you do it.";
+      return;
+    }
     if (showForm) {
       summary.textContent = p ? "" : state.entries.length
         ? "Set a daily limit that steps down on a schedule. The starting number is your recent daily average."
@@ -777,6 +869,7 @@
     }
     if (lim !== 0) lines.push("You'll reach 0 on " + longDay(zeroDay(p)) + ".");
     if (lim !== null && lim !== 0) lines.push("The plan cuts " + rule + ".");
+    if (p.auto) lines.push("Taper set it from your first days of logs. Change it any time.");
     summary.textContent = lines.join(" ");
   }
 
@@ -788,6 +881,7 @@
       return;
     }
     state.plan = p;
+    state.autoPlanned = true;
     editingPlan = false;
     save();
     render();
@@ -796,6 +890,7 @@
   function endPlan() {
     if (!window.confirm("End this plan? Your log stays.")) return;
     state.plan = null;
+    state.autoPlanned = true;
     editingPlan = false;
     $("#plan-form").hidden = true;
     save();
@@ -892,6 +987,7 @@
 
   function renderSettings() {
     $("#day-start").value = String(state.dayStart);
+    if (document.activeElement !== $("#unit-setting")) $("#unit-setting").value = state.unit || "";
   }
 
   function backupFile() {
@@ -909,13 +1005,14 @@
   }
 
   // On a phone the share sheet is the dependable way to save a file (Save to Files, AirDrop, Mail).
+  // Resolves true once the file was handed over, false if the person closed the share sheet.
   async function handOver(file) {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
-        return;
+        return true;
       } catch (e) {
-        if (e && e.name === "AbortError") return;
+        if (e && e.name === "AbortError") return false;
       }
     }
     const url = URL.createObjectURL(file);
@@ -926,6 +1023,29 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return true;
+  }
+
+  async function saveBackup() {
+    if (!(await handOver(backupFile()))) return;
+    state.backedUp = Date.now();
+    save();
+    renderNudge(state.backedUp);
+  }
+
+  // ---------- welcome ----------
+
+  function standalone() {
+    return navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  }
+
+  function pickUnit(ev) {
+    ev.preventDefault();
+    const input = $("#unit");
+    state.unit = cleanUnit(input.value) || cleanUnit(input.placeholder);
+    save();
+    render();
+    window.scrollTo(0, 0);
   }
 
   async function restore(file) {
@@ -944,6 +1064,8 @@
     if (!window.confirm("Add " + plural(fresh.length, "entry", "entries") + " from this backup" + planNote + "?")) return;
     state.entries = state.entries.concat(fresh).sort((a, b) => a - b);
     if (incoming.plan) state.plan = incoming.plan;
+    if (incoming.unit) state.unit = incoming.unit;
+    state.autoPlanned = state.autoPlanned || incoming.autoPlanned;
     state.dayStart = incoming.dayStart;
     save();
     render();
@@ -963,7 +1085,10 @@
 
   function render() {
     const now = Date.now();
+    document.body.classList.toggle("first-run", !state.unit);
+    if (!state.unit) { renderedDay = dayKey(now); return; }
     const counts = countsByDay();
+    autoPlan(now, counts);
     renderToday(now, counts);
     renderTrends(now, counts);
     renderPlan(now, counts);
@@ -976,6 +1101,18 @@
     fillSelect($("#plan-step"), STEP_CHOICES, String);
     fillSelect($("#plan-every"), EVERY_CHOICES, v => plural(v, "day", "days"));
     fillSelect($("#day-start"), DAY_START_CHOICES, v => (v === 0 ? "Midnight" : hourName(v)));
+
+    $("#unit-form").addEventListener("submit", pickUnit);
+    for (const b of document.querySelectorAll("#welcome .picks button")) {
+      b.addEventListener("click", () => { $("#unit").value = b.textContent; });
+    }
+    $("#install-hint").hidden = standalone();
+    $("#unit-setting").addEventListener("change", ev => {
+      const u = cleanUnit(ev.target.value);
+      if (u) state.unit = u;
+      save();
+      render();
+    });
 
     $("#log").addEventListener("click", logNow);
     $("#toast-undo").addEventListener("click", undo);
@@ -1003,7 +1140,8 @@
       save();
       render();
     });
-    $("#backup-save").addEventListener("click", () => handOver(backupFile()));
+    $("#backup-save").addEventListener("click", saveBackup);
+    $("#backup-nudge-save").addEventListener("click", saveBackup);
     $("#export-csv").addEventListener("click", () => handOver(csvFile()));
     $("#backup-restore").addEventListener("click", () => $("#backup-file").click());
     $("#backup-file").addEventListener("change", ev => {
@@ -1027,7 +1165,7 @@
     setInterval(() => {
       const now = Date.now();
       if (dayKey(now) !== renderedDay) render();
-      else renderSince(now);
+      else if (state.unit) renderSince(now);
     }, 30000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
     window.addEventListener("storage", ev => { if (ev.key === KEY) { state = load(); render(); } });
@@ -1043,6 +1181,7 @@
   window.Taper = {
     get state() { return state; },
     dayKey, addDays, daysBetween, limitOn, nextDrop, zeroDay, niceScale, since, tidy, buildRange, byWeek, backupFile, csvFile,
+    single, makePlanFrom,
     tooltips: () => tooltips,
     render
   };

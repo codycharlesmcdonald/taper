@@ -19,13 +19,36 @@
 </head>
 <body>
 <main>
+  <section id="welcome" aria-labelledby="welcome-h">
+    <h1 id="welcome-h">Welcome to Taper</h1>
+    <p class="lead">I built this little bad habit tracker to do bad things less.</p>
+    <p class="lead">Pick what you're counting, like cigs, then log each time you do that thing. After a few days of
+      logs, once Taper has a sense of how often you do it, it makes a plan for weaning off.</p>
+    <p class="lead">Your log stays on your phone. Nothing is sent anywhere.</p>
+    <p id="install-hint" class="note install-hint" hidden>On iPhone, add Taper to your Home Screen before you start:
+      tap Share, then Add to Home Screen. Safari clears a website's data after 7 days without a visit, and the
+      Home Screen app keeps it.</p>
+    <form id="unit-form" class="unit-form" novalidate>
+      <label for="unit">What are you counting?</label>
+      <input id="unit" type="text" placeholder="cigs" maxlength="24" autocomplete="off" autocapitalize="none" enterkeyhint="go">
+      <div class="picks" aria-label="Ideas">
+        <button type="button">cigs</button>
+        <button type="button">vapes</button>
+        <button type="button">drinks</button>
+        <button type="button">coffees</button>
+        <button type="button">snacks</button>
+      </div>
+      <button class="primary" type="submit">Start logging</button>
+    </form>
+  </section>
+
   <section id="today" aria-labelledby="today-date">
     <p id="today-date" class="date"></p>
     <p class="hero"><span id="count">0</span> <span id="count-note"></span></p>
     <div id="meter" class="meter" aria-hidden="true" hidden></div>
     <p id="meter-note" class="note" hidden></p>
     <p id="since" class="note"></p>
-    <button id="log" class="primary" type="button">Log a cigarette</button>
+    <button id="log" class="primary" type="button">Log one</button>
     <button id="missed-toggle" class="link" type="button" aria-expanded="false" aria-controls="missed">Add one I missed</button>
     <form id="missed" class="missed" novalidate hidden>
       <label for="missed-at">When</label>
@@ -33,6 +56,10 @@
       <button type="submit" class="solid">Add</button>
       <p id="missed-error" class="error" hidden></p>
     </form>
+    <div id="backup-nudge" class="nudge" hidden>
+      <p id="backup-nudge-text" class="note"></p>
+      <button id="backup-nudge-save" type="button" class="solid">Save a backup</button>
+    </div>
   </section>
 
   <section id="trends" aria-labelledby="trends-h">
@@ -48,7 +75,7 @@
       <div id="stats" class="stats"></div>
       <figure class="chart">
         <figcaption>
-          <h3 id="day-title">Cigarettes per day</h3>
+          <h3 id="day-title">Per day</h3>
           <ul id="day-legend" class="legend"></ul>
         </figcaption>
         <div id="day-chart" class="plot"></div>
@@ -100,8 +127,9 @@
 
   <section id="settings" aria-labelledby="settings-h">
     <h2 id="settings-h">Settings</h2>
+    <label class="field">Counting <input id="unit-setting" type="text" maxlength="24" autocomplete="off" autocapitalize="none"></label>
     <label class="field">My day ends at <select id="day-start"></select></label>
-    <p class="note">Ones you smoke after midnight and before this time count toward the day before.</p>
+    <p class="note">Ones logged after midnight and before this time count toward the day before.</p>
     <p class="note backup-note">Everything stays on this phone. Save a backup now and then so you don't lose your log.</p>
     <div class="buttons">
       <button id="backup-save" type="button" class="solid">Save a backup</button>

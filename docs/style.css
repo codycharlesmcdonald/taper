@@ -123,7 +123,22 @@ input[type="number"] { width: 4.5em; }
 
 .buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 16px; }
 
+/* Welcome: shown alone until a unit is picked */
+body.first-run main > section:not(#welcome) { display: none; }
+body:not(.first-run) #welcome { display: none; }
+#welcome h1 { font-size: 34px; font-weight: 700; line-height: 1.1; margin: 20px 0 18px; }
+.lead { font-size: 18px; line-height: 1.5; color: var(--ink-2); margin: 0 0 16px; }
+.install-hint { margin: 4px 0 8px; }
+.unit-form { margin-top: 28px; }
+.unit-form label { display: block; font-weight: 600; margin: 0 0 8px; }
+.unit-form input { width: 100%; font-size: 20px; }
+.picks { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0; }
+.picks button { padding: 6px 0; border: 0; background: none; color: var(--bar); font-size: 16px; }
+#unit-setting { width: 9em; }
+
 /* Today */
+.nudge { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.nudge .solid { margin-top: 10px; }
 .date { color: var(--ink-2); font-size: 15px; }
 .hero { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 14px; }
 #count { font-size: 76px; font-weight: 650; line-height: 1; }

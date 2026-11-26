@@ -27,14 +27,14 @@
   }
   const eq = (name, got, want) => check(name, got === want, "got " + JSON.stringify(got) + ", want " + JSON.stringify(want));
 
-  function open(state) {
-    return new Promise(resolve => {
-      if (state) localStorage.setItem("taper", JSON.stringify(state));
-      else localStorage.removeItem("taper");
-      const f = document.getElementById("app");
-      f.onload = () => resolve(f.contentWindow);
-      f.src = "../docs/index.html?run=" + Math.random();
-    });
+  // The frame is blanked first: a storage change would otherwise reach the app still open in it.
+  const load = (f, src) => new Promise(resolve => { f.onload = () => resolve(f.contentWindow); f.src = src; });
+  async function open(state) {
+    const f = document.getElementById("app");
+    await load(f, "about:blank");
+    if (state) localStorage.setItem("taper", JSON.stringify(state));
+    else localStorage.removeItem("taper");
+    return load(f, "../docs/index.html?run=" + Math.random());
   }
 
   const pad = n => String(n).padStart(2, "0");
@@ -69,31 +69,64 @@
     eq("axis for counts", JSON.stringify(T.niceScale(13, true)), JSON.stringify({ step: 5, top: 15 }));
     eq("axis for a single cigarette", JSON.stringify(T.niceScale(1, true)), JSON.stringify({ step: 1, top: 1 }));
     eq("axis for fractions", T.niceScale(0.3, false).step, 0.1);
+    eq("one cig", T.single("cigs"), "cig");
+    eq("one coffee", T.single("coffees"), "coffee");
+    eq("one glass of wine stays", T.single("glass of wine"), "glass of wine");
+    eq("one energy drink", T.single("energy drinks"), "energy drink");
+    eq("one patch", T.single("patches"), "patch");
+    eq("one candy", T.single("candies"), "candy");
+    eq("made plan starts at the average", T.makePlanFrom(14.4, "2026-01-05").start, 14);
+    eq("made plan cuts about a tenth", T.makePlanFrom(14.4, "2026-01-05").step, 1);
+    eq("made plan cuts at least one", T.makePlanFrom(3, "2026-01-05").step, 1);
+    eq("made plan for a heavy habit", T.makePlanFrom(30, "2026-01-05").step, 3);
+    eq("made plan starts at 1 at the least", T.makePlanFrom(0.2, "2026-01-05").start, 1);
+    eq("made plan is weekly", T.makePlanFrom(10, "2026-01-05").every, 7);
     const tidied = T.tidy({ entries: [3, 1, "x", 2, 2, NaN], plan: { start: 0 }, dayStart: 9, range: 12 });
     eq("tidy keeps numbers, sorted, once each", JSON.stringify(tidied.entries), "[1,2,3]");
     eq("tidy drops a bad plan", tidied.plan, null);
     eq("tidy resets a bad day end", tidied.dayStart, 0);
     eq("tidy resets a bad range", tidied.range, 30);
+    eq("an old log counts cigarettes", tidied.unit, "cigarettes");
+    eq("a fresh start has no unit", T.tidy({ entries: [] }).unit, null);
+    eq("tidy keeps a unit, tidied", T.tidy({ unit: "  Energy   Drinks ", entries: [] }).unit, "energy drinks");
     const twoAm = new Date(2026, 4, 10, 2, 0).getTime();
     eq("2 am with days ending at midnight", T.dayKey(twoAm), "2026-05-10");
     T.state.dayStart = 4;
     eq("2 am with days ending at 4 am", T.dayKey(twoAm), "2026-05-09");
     T.state.dayStart = 0;
 
-    // ---------- a first run ----------
+    // ---------- a first run: the welcome ----------
     let d = w.document;
     let $ = s => d.querySelector(s);
+    check("welcome shows first", d.body.classList.contains("first-run") && $("#welcome").offsetHeight > 0);
+    check("the app waits behind it", $("#today").offsetHeight === 0 && $("#settings").offsetHeight === 0);
+    check("install hint shows outside the Home Screen app", !$("#install-hint").hidden);
+    d.querySelectorAll("#welcome .picks button")[2].click();
+    eq("an idea fills the box", $("#unit").value, "drinks");
+    $("#unit").value = "";
+    $("#unit-form").requestSubmit();
+    eq("an empty box counts cigs", saved().unit, "cigs");
+    check("the app shows after the welcome", !d.body.classList.contains("first-run") && $("#today").offsetHeight > 0);
+    eq("log button names the unit", $("#log").textContent, "Log a cig");
+    check("plan waits for a few days of logs", $("#plan-form").hidden && /Log as usual for a few days/.test($("#plan-summary").textContent), $("#plan-summary").textContent);
+    eq("own plan offered", $("#plan-edit").textContent, "Set my own plan");
+    check("no end plan without a plan", $("#plan-end").hidden);
+    $("#plan-edit").click();
+    check("own plan opens the form", !$("#plan-form").hidden);
+    check("and it can be closed again", !$("#plan-cancel").hidden);
+    $("#plan-cancel").click();
+    check("closed again", $("#plan-form").hidden);
+    eq("no plan saved from that", saved().plan, null);
+    check("no backup reminder yet", $("#backup-nudge").hidden);
     eq("count starts at 0", $("#count").textContent, "0");
     check("charts wait for the first log", !$("#trends-empty").hidden && $("#trends-body").hidden);
     check("history says nothing yet", !$("#history-empty").hidden);
-    check("plan form shows with no plan", !$("#plan-form").hidden);
-    eq("suggested start with nothing logged", $("#plan-start").value, "10");
     check("no meter without a plan", $("#meter").hidden && $("#meter-note").hidden);
 
     // ---------- logging, undo, the double tap guard ----------
     $("#log").click();
     eq("one logged", $("#count").textContent, "1");
-    eq("count note without a plan", $("#count-note").textContent, "cigarette today");
+    eq("count note without a plan", $("#count-note").textContent, "cig today");
     check("toast offers undo", !$("#toast").hidden && !$("#toast-undo").hidden);
     $("#log").click();
     eq("a fast second tap is ignored", $("#count").textContent, "1");
@@ -126,6 +159,12 @@
     w = await open(saved());
     T = w.Taper; d = w.document; $ = s => d.querySelector(s);
     eq("log survives a reload", T.state.entries.length, 2);
+    eq("unit survives a reload", $("#log").textContent, "Log a cig");
+    check("waiting counts the days left", /Log as usual for 3 more days/.test($("#plan-summary").textContent), $("#plan-summary").textContent);
+
+    // ---------- a plan of your own ----------
+    $("#plan-edit").click();
+    eq("suggested start before a full day", $("#plan-start").value, "10");
 
     // ---------- a plan ----------
     $("#plan-start").value = "5";
@@ -139,6 +178,7 @@
     eq("a blank start is refused", T.state.plan, null);
     $("#plan-start").value = "5";
     $("#plan-form").requestSubmit();
+    check("own plan stops the automatic one", saved().autoPlanned === true);
     eq("plan saved", JSON.stringify(saved().plan), JSON.stringify({ start: 5, step: 1, every: 7, from: T.dayKey(Date.now()) }));
     eq("count note shows the limit", $("#count-note").textContent, "of 5 today");
     const today = Number($("#count").textContent);
@@ -168,6 +208,7 @@
     $("#plan-end").click();
     eq("plan ended", T.state.plan, null);
     check("form back for a new plan", !$("#plan-form").hidden);
+    check("no automatic plan after ending one", T.render() === undefined && T.state.plan === null);
     check("meter gone with the plan", $("#meter").hidden);
 
     // ---------- the files ----------
@@ -178,6 +219,34 @@
     const backup = JSON.parse(await T.backupFile().text());
     eq("backup holds every entry", backup.entries.length, T.state.entries.length);
     eq("backup names the app", backup.app, "taper");
+    eq("backup holds the unit", backup.unit, "cigs");
+
+    // ---------- the automatic plan, from a few days of logs ----------
+    w = await open(Object.assign(TaperFixtures.week(), { unit: "vapes" }));
+    T = w.Taper; d = w.document; $ = s => d.querySelector(s);
+    const auto = saved().plan;
+    check("plan made after a few days", !!auto && auto.auto === true, JSON.stringify(auto));
+    eq("it starts today", auto.from, T.dayKey(Date.now()));
+    check("it starts near the average", auto.start >= 12 && auto.start <= 16, auto.start);
+    check("summary says Taper set it", /Taper set it from your first days/.test($("#plan-summary").textContent), $("#plan-summary").textContent);
+    check("toast tells", /made your plan/.test($("#toast-text").textContent), $("#toast-text").textContent);
+    eq("log button for vapes", $("#log").textContent, "Log a vape");
+    eq("chart title for vapes", $("#day-title").textContent, "Vapes per day");
+    check("backup reminder after a few days", !$("#backup-nudge").hidden && /only on this phone/.test($("#backup-nudge-text").textContent));
+    w = await open(saved());
+    T = w.Taper; d = w.document; $ = s => d.querySelector(s);
+    eq("made only once", JSON.stringify(saved().plan), JSON.stringify(auto));
+    const fresh = Date.now() - 3600000;
+    w = await open(Object.assign(TaperFixtures.week(), { unit: "vapes", backedUp: fresh }));
+    d = w.document; $ = s => d.querySelector(s);
+    check("no reminder after a recent backup", $("#backup-nudge").hidden);
+    w = await open(Object.assign(TaperFixtures.week(), { unit: "vapes", backedUp: Date.now() - 4 * 864e5 - 20 * 864e5 }));
+    d = w.document; $ = s => d.querySelector(s);
+    check("reminder when the backup is old", !$("#backup-nudge").hidden && /last backup was 24 days ago/.test($("#backup-nudge-text").textContent), $("#backup-nudge-text").textContent);
+    $("#unit-setting").value = "Energy Drinks";
+    $("#unit-setting").dispatchEvent(new w.Event("change", { bubbles: true }));
+    eq("unit changed in Settings", saved().unit, "energy drinks");
+    eq("log button follows", $("#log").textContent, "Log an energy drink");
 
     // ---------- charts with a month of made-up logs ----------
     w = await open(TaperFixtures.month());

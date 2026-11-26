@@ -1,25 +1,34 @@
 # Taper
 
-A small phone app for cutting down on cigarettes. Tap once for each one you smoke, set a daily limit that steps
-down on a schedule, and watch the count against time.
+A small phone app for cutting down on a bad habit. Pick what you're counting (cigs, vapes, drinks), tap once each
+time, and after a few days Taper sets a daily limit that steps down on a schedule. Watch the count against time.
+
+Live at https://pantsonmyhead.com/taper/ (`bash tools/publish.sh` copies `docs/` into the pantsonmyhead.com
+repository, `../recipe-app/docs/taper`, and pushes it).
 
 It's a Home Screen web app. Open the site in Safari on the iPhone, tap Share, then Add to Home Screen. From
 then on it opens full screen from its own icon and works with no signal.
 
 ## What it does
 
+- **Welcome**: shown until a unit is picked: what Taper does, and What are you counting? Every label uses the
+  unit after that (Log a cig, Cigs per day). Change it in Settings. Logs from before the unit existed count
+  cigarettes.
 - **Today**: the count so far, today's limit with a bar of what's left, time since the last one, a big
   Log a cigarette button with Undo, and Add one I missed for one logged late.
 - **Over time**: 7 days, 30 days, 90 days or All. Daily average against the period before, the total, and days
   within the limit. A column chart of cigarettes per day with the 7-day average and the limit line, and a
   time of day chart that shows which hours carry the most. Tap or drag on a chart to read a day. Show the
   numbers opens the same values as a table. Past 120 days the per-day chart draws one column per week.
-- **Plan**: start at a number a day and cut by 1 to 5 every 3 to 14 days, from a start date. The starting number
+- **Plan**: after 3 full days of logs Taper makes one, once: start at the recent daily average and cut about a
+  tenth of it every 7 days (at least 1), so it reaches 0 in about ten weeks. Before then, Set my own plan opens
+  the form. By hand: start at a number a day and cut by 1 to 5 every 3 to 14 days, from a start date. The starting number
   fills in from the recent daily average. The summary names today's limit, the next drop and the day it
   reaches 0.
 - **History**: every day with its times. Tap a time to remove it.
 - **Settings**: when your day ends (midnight to 5 am, so a 1 am cigarette can count toward the day before),
-  Save a backup, Restore a backup, and Export CSV.
+  Save a backup, Restore a backup, and Export CSV. Today shows a backup reminder after 3 days of logs with no
+  backup, then 14 days after the last one.
 
 ## Where the data lives
 
