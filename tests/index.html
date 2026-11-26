@@ -106,7 +106,7 @@
     check("the app waits behind it", $("#today").offsetHeight === 0 && $("#settings").offsetHeight === 0);
     check("install hint shows outside the Home Screen app", !$("#install-hint").hidden);
     d.querySelectorAll("#welcome .picks button")[2].click();
-    eq("an idea fills the box", $("#unit").value, "regrettable drinks");
+    eq("an idea fills the box", $("#unit").value, "drinks");
     $("#unit").value = "";
     $("#unit-form").requestSubmit();
     eq("an empty box counts cigs", saved().unit, "cigs");
