@@ -202,7 +202,7 @@
     $("#count").textContent = count;
     $("#count-note").textContent = limit === null ? unitWord(count) + " today" : "of " + limit + " today";
     const each = single(state.unit);
-    $("#log").textContent = "Log " + article(each) + each;
+    $("#log-label").textContent = "Log " + article(each) + each;
     renderMeter(count, limit);
     renderSince(now);
     renderNudge(now);
@@ -831,7 +831,7 @@
     const today = dayKey(now), p = state.plan, form = $("#plan-form");
     const waiting = !p && !state.autoPlanned && !editingPlan;
     const showForm = !waiting && (!p || editingPlan);
-    $("#plan-edit").textContent = p ? "Change plan" : "Set my own plan";
+    $("#plan-edit-label").textContent = p ? "Change plan" : "Set my own plan";
     $("#plan-end").hidden = !p;
     if (showForm && form.hidden) fillPlanForm(now, counts);
     form.hidden = !showForm;
@@ -969,8 +969,8 @@
       q.textContent = "Remove the one at " + F.time.format(t) + "?";
       const yes = document.createElement("button");
       yes.type = "button";
-      yes.className = "remove";
-      yes.textContent = "Remove";
+      yes.className = "danger";
+      yes.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Remove';
       yes.addEventListener("click", () => removeEntry(t));
       const no = document.createElement("button");
       no.type = "button";
@@ -1087,10 +1087,10 @@
   function render() {
     const now = Date.now();
     const welcome = !state.unit || welcomeOpen;
-    document.body.classList.toggle("first-run", welcome);
+    document.documentElement.classList.toggle("first-run", welcome);
     if (welcome) {
       if (state.unit && !$("#unit").value) $("#unit").value = state.unit;
-      $("#unit-submit").textContent = state.entries.length ? "Back to my log" : "Start logging";
+      $("#unit-submit-label").textContent = state.entries.length ? "Back to my log" : "Start logging";
       renderedDay = dayKey(now);
       return;
     }
@@ -1173,7 +1173,7 @@
     setInterval(() => {
       const now = Date.now();
       if (dayKey(now) !== renderedDay) render();
-      else if (!document.body.classList.contains("first-run")) renderSince(now);
+      else if (!document.documentElement.classList.contains("first-run")) renderSince(now);
     }, 30000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
     window.addEventListener("storage", ev => { if (ev.key === KEY) { state = load(); render(); } });

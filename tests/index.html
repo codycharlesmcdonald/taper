@@ -102,7 +102,7 @@
     // ---------- a first run: the welcome ----------
     let d = w.document;
     let $ = s => d.querySelector(s);
-    check("welcome shows first", d.body.classList.contains("first-run") && $("#welcome").offsetHeight > 0);
+    check("welcome shows first", d.documentElement.classList.contains("first-run") && $("#welcome").offsetHeight > 0);
     check("the app waits behind it", $("#today").offsetHeight === 0 && $("#settings").offsetHeight === 0);
     check("install hint shows outside the Home Screen app", !$("#install-hint").hidden);
     d.querySelectorAll("#welcome .picks button")[2].click();
@@ -110,7 +110,7 @@
     $("#unit").value = "";
     $("#unit-form").requestSubmit();
     eq("an empty box counts cigs", saved().unit, "cigs");
-    check("the app shows after the welcome", !d.body.classList.contains("first-run") && $("#today").offsetHeight > 0);
+    check("the app shows after the welcome", !d.documentElement.classList.contains("first-run") && $("#today").offsetHeight > 0);
     eq("log button names the unit", $("#log").textContent, "Log a cig");
     check("plan waits for a few days of logs", $("#plan-form").hidden && /Log as usual for a few days/.test($("#plan-summary").textContent), $("#plan-summary").textContent);
     eq("own plan offered", $("#plan-edit").textContent, "Set my own plan");
@@ -252,18 +252,18 @@
     eq("unit changed in Settings", saved().unit, "energy drinks");
     eq("log button follows", $("#log").textContent, "Log an energy drink");
     $("#about").click();
-    check("About Taper shows the welcome", d.body.classList.contains("first-run"));
+    check("About Taper shows the welcome", d.documentElement.classList.contains("first-run"));
     eq("with the unit filled in", $("#unit").value, "energy drinks");
-    eq("and a way back", $("#unit-submit").textContent, "Back to my log");
+    eq("and a way back", $("#unit-submit").textContent.trim(), "Back to my log");
     $("#unit-form").requestSubmit();
-    check("back to the log", !d.body.classList.contains("first-run") && saved().unit === "energy drinks");
+    check("back to the log", !d.documentElement.classList.contains("first-run") && saved().unit === "energy drinks");
 
     // ---------- a log from before the unit was asked ----------
     const old = TaperFixtures.week();
     delete old.unit;
     w = await open(old);
     d = w.document; $ = s => d.querySelector(s);
-    check("an older log gets the welcome", d.body.classList.contains("first-run"));
+    check("an older log gets the welcome", d.documentElement.classList.contains("first-run"));
     $("#unit").value = "cigs";
     $("#unit-form").requestSubmit();
     eq("its log is all still there", saved().entries.length, old.entries.length);
@@ -318,7 +318,7 @@
     d.querySelector("#history-list .confirm .link").click();
     check("keep leaves it", !d.querySelector("#history-list .confirm") && T.state.entries.length === before);
     d.querySelector("#history-list .time").click();
-    d.querySelector("#history-list .confirm .remove").click();
+    d.querySelector("#history-list .confirm .danger").click();
     eq("remove takes one out", T.state.entries.length, before - 1);
     eq("removal is saved", saved().entries.length, before - 1);
 

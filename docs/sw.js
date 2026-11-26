@@ -1,6 +1,6 @@
 /* Keeps Taper working offline: every file comes from the network when there is one and from the cache when
    there isn't. */
-const CACHE = "taper-v3";
+const CACHE = "taper-v4";
 const FILES = [
   "./",
   "index.html",
@@ -9,7 +9,8 @@ const FILES = [
   "manifest.webmanifest",
   "icons/icon-180.png",
   "icons/icon-192.png",
-  "icons/icon-512.png"
+  "icons/icon-512.png",
+  "icons/icon-maskable-512.png"
 ];
 
 self.addEventListener("install", ev => {

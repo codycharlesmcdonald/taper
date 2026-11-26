@@ -30,6 +30,13 @@ then on it opens full screen from its own icon and works with no signal.
   Save a backup, Restore a backup, and Export CSV. Today shows a backup reminder after 3 days of logs with no
   backup, then 14 days after the last one.
 
+## Look
+
+An app bar with the icon and name; the Log button is the one solid blue action, other actions are tinted blue or
+plain blue text, removals are red, and each carries an inline SVG icon (the symbols at the top of `index.html`).
+The range picker is a segmented control. Light and dark follow the phone. A small script in the page head picks
+the welcome or the log before anything draws, so neither flashes on launch.
+
 ## Where the data lives
 
 Only on the phone, in the browser storage for this site, under the key `taper`. Nothing is sent anywhere and
@@ -44,7 +51,8 @@ sheet, so Save to Files works). Restore adds the backup's entries to what's ther
 - `tests/index.html` drives the app in a phone-sized frame. `tests/seed.html?f=month` fills the storage with
   a made-up month and opens the app (also `fresh`, `week` and `year`; add `&range=7` to pick a range).
 - `tools/run_tests.py` and `tools/shot.py` run the tests and take screenshots in headless Chrome.
-  `tools/make_icons.py` draws the icon.
+  `tools/make_icons.py` draws the icon (white columns stepping down on a blue gradient; the four PNGs in
+  `docs/icons/`, one of them maskable).
 
 ```
 python3 -I -B tools/run_tests.py . tests/index.html

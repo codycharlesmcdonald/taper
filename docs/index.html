@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Taper">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,18 +16,56 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="stylesheet" href="style.css">
 <title>Taper</title>
+<script>
+  // Decide welcome or log before the page draws, so neither flashes on launch.
+  try {
+    var saved = JSON.parse(localStorage.getItem("taper"));
+    if (!saved || !saved.unit) document.documentElement.classList.add("first-run");
+  } catch (e) {
+    document.documentElement.classList.add("first-run");
+  }
+</script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v9M7.5 12h9"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12.5V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6.5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5V20"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.01"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4.5L19.5 9a2.1 2.1 0 0 0-3-3L5.5 17 4 20z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 2.5 20h19L12 3.5z"/><path d="M12 10v4.5M12 17.4v.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  </defs>
+</svg>
+
+<header class="appbar">
+  <div class="appbar-inner">
+    <img src="icons/icon-180.png" alt="">
+    <span>Taper</span>
+  </div>
+</header>
+
 <main>
   <section id="welcome" aria-labelledby="welcome-h">
+    <img class="welcome-icon" src="icons/icon-180.png" alt="">
     <h1 id="welcome-h">Welcome to Taper</h1>
     <p class="lead">I built this little bad habit tracker to do bad things less.</p>
     <p class="lead">Pick what you're counting, like cigs, then log each time you do that thing. After a few days of
       logs, once Taper has a sense of how often you do it, it makes a plan for weaning off.</p>
     <p class="lead">Your data is stored locally on your phone and goes away when you clear your cookies.</p>
-    <p id="install-hint" class="note install-hint" hidden>On iPhone, add Taper to your Home Screen before you start:
-      tap Share, then Add to Home Screen. Safari clears a website's data after 7 days without a visit, and the
-      Home Screen app keeps it.</p>
+    <div id="install-hint" class="note install-hint" hidden>
+      <svg class="ic" aria-hidden="true"><use href="#i-up"/></svg>
+      <p>On iPhone, add Taper to your Home Screen before you start: tap Share, then Add to Home Screen. Safari
+        clears a website's data after 7 days without a visit, and the Home Screen app keeps it.</p>
+    </div>
     <form id="unit-form" class="unit-form" novalidate>
       <label for="unit">What are you counting?</label>
       <input id="unit" type="text" placeholder="cigs" maxlength="24" autocomplete="off" autocapitalize="none" enterkeyhint="go">
@@ -38,7 +76,7 @@
         <button type="button">impulse buys</button>
         <button type="button">nose picks</button>
       </div>
-      <button id="unit-submit" class="primary" type="submit">Start logging</button>
+      <button id="unit-submit" class="primary" type="submit"><span id="unit-submit-label">Start logging</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></button>
     </form>
   </section>
 
@@ -48,17 +86,20 @@
     <div id="meter" class="meter" aria-hidden="true" hidden></div>
     <p id="meter-note" class="note" hidden></p>
     <p id="since" class="note"></p>
-    <button id="log" class="primary" type="button">Log one</button>
-    <button id="missed-toggle" class="link" type="button" aria-expanded="false" aria-controls="missed">Add one I missed</button>
+    <button id="log" class="primary" type="button"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span id="log-label">Log one</span></button>
+    <button id="missed-toggle" class="link" type="button" aria-expanded="false" aria-controls="missed"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>Add one I missed</button>
     <form id="missed" class="missed" novalidate hidden>
       <label for="missed-at">When</label>
       <input id="missed-at" type="datetime-local" required>
-      <button type="submit" class="solid">Add</button>
+      <button type="submit" class="solid"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Add</button>
       <p id="missed-error" class="error" hidden></p>
     </form>
     <div id="backup-nudge" class="nudge" hidden>
-      <p id="backup-nudge-text" class="note"></p>
-      <button id="backup-nudge-save" type="button" class="solid">Save a backup</button>
+      <svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>
+      <div>
+        <p id="backup-nudge-text" class="note"></p>
+        <button id="backup-nudge-save" type="button" class="tinted"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg>Save a backup</button>
+      </div>
     </div>
   </section>
 
@@ -102,8 +143,8 @@
     <h2 id="plan-h">Plan</h2>
     <p id="plan-summary" class="plan-summary"></p>
     <div id="plan-actions" class="buttons" hidden>
-      <button id="plan-edit" type="button" class="solid">Change plan</button>
-      <button id="plan-end" type="button" class="link">End plan</button>
+      <button id="plan-edit" type="button" class="tinted"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg><span id="plan-edit-label">Change plan</span></button>
+      <button id="plan-end" type="button" class="link danger-text"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>End plan</button>
     </div>
     <form id="plan-form" class="plan-form" novalidate hidden>
       <label class="field">Start at <input id="plan-start" type="number" inputmode="numeric" min="1" max="99" step="1" required> a day</label>
@@ -111,7 +152,7 @@
       <label class="field">Starting <input id="plan-from" type="date" required></label>
       <p id="plan-preview" class="note"></p>
       <div class="buttons">
-        <button type="submit" class="solid">Save plan</button>
+        <button type="submit" class="solid"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Save plan</button>
         <button id="plan-cancel" type="button" class="link">Cancel</button>
       </div>
     </form>
@@ -122,7 +163,7 @@
     <p id="history-empty" class="note">Nothing logged yet.</p>
     <p id="history-help" class="note" hidden>Tap a time to remove it.</p>
     <ul id="history-list" class="days"></ul>
-    <button id="history-more" type="button" class="link" hidden>Show earlier days</button>
+    <button id="history-more" type="button" class="link" hidden><svg class="ic" aria-hidden="true"><use href="#i-more"/></svg>Show earlier days</button>
   </section>
 
   <section id="settings" aria-labelledby="settings-h">
@@ -132,10 +173,10 @@
     <p class="note">Ones logged after midnight and before this time count toward the day before.</p>
     <p class="note backup-note">Everything stays on this phone. Save a backup now and then so you don't lose your log.</p>
     <div class="buttons">
-      <button id="backup-save" type="button" class="solid">Save a backup</button>
-      <button id="backup-restore" type="button" class="link">Restore a backup</button>
-      <button id="export-csv" type="button" class="link">Export CSV</button>
-      <button id="about" type="button" class="link">About Taper</button>
+      <button id="backup-save" type="button" class="tinted"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg>Save a backup</button>
+      <button id="backup-restore" type="button" class="tinted"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg>Restore a backup</button>
+      <button id="export-csv" type="button" class="link"><svg class="ic" aria-hidden="true"><use href="#i-table"/></svg>Export CSV</button>
+      <button id="about" type="button" class="link"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>About Taper</button>
     </div>
     <input id="backup-file" type="file" accept="application/json,.json" hidden>
   </section>
@@ -143,7 +184,7 @@
 
 <div id="toast" class="toast" role="status" hidden>
   <span id="toast-text"></span>
-  <button id="toast-undo" type="button">Undo</button>
+  <button id="toast-undo" type="button"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg>Undo</button>
 </div>
 
 <script src="app.js"></script>
