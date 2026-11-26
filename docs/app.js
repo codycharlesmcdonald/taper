@@ -630,6 +630,26 @@
       "V" + b + "Z";
   }
 
+  // Counting cigarettes draws each column as one: filter at the foot, paper, a lit tip with a little ash.
+  // A low day is a short one, smoked down. Any other unit keeps plain columns.
+  const CIG_UNITS = /^(cigs?|cigarettes?|ciggies|ciggy|ciggys|smokes|darts|durries|fags)$/;
+  const cigMode = () => !!state.unit && CIG_UNITS.test(state.unit);
+
+  function cigBar(x, top, w, h, PH, parent) {
+    const g = svgEl("g", { class: "bar cig" }, parent);
+    const base = top + h;
+    const filterH = Math.min(h, Math.max(4, PH * 0.12));
+    const ashH = h > filterH + 6 ? Math.min(2.5, w * 0.3) : 0;
+    const emberH = Math.min(h - filterH, 3.5);
+    const r = Math.min(1.5, w / 4);
+    if (h - filterH > 0) svgEl("rect", { x, y: top, width: w, height: h - filterH + r, rx: r, class: "cig-paper" }, g);
+    svgEl("rect", { x, y: base - filterH, width: w, height: filterH, rx: r, class: "cig-filter" }, g);
+    if (filterH > 6) svgEl("line", { x1: x, x2: x + w, y1: base - filterH + 0.5, y2: base - filterH + 0.5, class: "cig-band" }, g);
+    if (emberH > 0) svgEl("rect", { x, y: top + ashH, width: w, height: emberH, class: "cig-ember" }, g);
+    if (ashH) svgEl("rect", { x, y: top, width: w, height: ashH, rx: r, class: "cig-ash" }, g);
+    return g;
+  }
+
   function columnChart(host, o) {
     host.textContent = "";
     const W = Math.max(280, Math.round(host.clientWidth || 340));
@@ -654,11 +674,14 @@
       svgEl("text", { x: LEFT - 8, y: yy + 4, "text-anchor": "end" }, svg).textContent = String(Number(v.toFixed(2)));
     }
 
-    const barW = Math.min(24, Math.max(1, band - 2));
+    const cigs = cigMode();
+    const barW = Math.min(cigs ? 14 : 24, Math.max(1, band - 2));
     const bars = o.points.map((p, i) => {
       if (!(p.value > 0)) return null;
       const h = (p.value / sc.top) * PH;
-      return svgEl("path", { d: barPath(LEFT + band * i + (band - barW) / 2, TOP + PH - h, barW, h), class: "bar" }, svg);
+      const x = LEFT + band * i + (band - barW) / 2;
+      if (cigs) return cigBar(x, TOP + PH - h, barW, h, PH, svg);
+      return svgEl("path", { d: barPath(x, TOP + PH - h, barW, h), class: "bar" }, svg);
     });
 
     const base = Math.round(y(0)) + 0.5;
@@ -1088,6 +1111,7 @@
     const now = Date.now();
     const welcome = !state.unit || welcomeOpen;
     document.documentElement.classList.toggle("first-run", welcome);
+    document.documentElement.classList.toggle("cigs", cigMode());
     if (welcome) {
       if (state.unit && !$("#unit").value) $("#unit").value = state.unit;
       $("#unit-submit-label").textContent = state.entries.length ? "Back to my log" : "Start logging";
@@ -1189,7 +1213,7 @@
   window.Taper = {
     get state() { return state; },
     dayKey, addDays, daysBetween, limitOn, nextDrop, zeroDay, niceScale, since, tidy, buildRange, byWeek, backupFile, csvFile,
-    single, makePlanFrom,
+    single, makePlanFrom, cigMode,
     tooltips: () => tooltips,
     render
   };

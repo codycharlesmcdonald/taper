@@ -236,6 +236,8 @@
     check("toast tells", /made your plan/.test($("#toast-text").textContent), $("#toast-text").textContent);
     eq("log button for vapes", $("#log").textContent, "Log a vape");
     eq("chart title for vapes", $("#day-title").textContent, "Vapes per day");
+    check("vapes keep plain columns", !d.querySelector("#day-chart .cig") && !!d.querySelector("#day-chart path.bar"));
+    eq("not cig mode for vapes", T.cigMode(), false);
     check("backup reminder after a few days", !$("#backup-nudge").hidden && /only on this phone/.test($("#backup-nudge-text").textContent));
     w = await open(saved());
     T = w.Taper; d = w.document; $ = s => d.querySelector(s);
@@ -284,6 +286,8 @@
     check("no bar is wider than 24 px", Array.from(d.querySelectorAll("#day-chart .bar")).every(b => b.getBBox().width <= 24.01));
     const svg = $("#day-chart svg");
     check("chart fits the phone", svg.getBoundingClientRect().width <= d.documentElement.clientWidth);
+    check("counting cigs draws cigarettes", d.querySelectorAll("#day-chart .bar.cig").length > 0 && !!$("#day-chart .cig-filter") && !!$("#day-chart .cig-ember"));
+    check("cig legend key", d.documentElement.classList.contains("cigs"));
 
     d.querySelector('.range [data-range="7"]').click();
     eq("7 days in the table", rows("#day-table"), 7);

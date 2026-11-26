@@ -1,6 +1,6 @@
 /* Keeps Taper working offline: every file comes from the network when there is one and from the cache when
    there isn't. */
-const CACHE = "taper-v4";
+const CACHE = "taper-v5";
 const FILES = [
   "./",
   "index.html",

@@ -284,6 +284,15 @@ figcaption { margin-bottom: 10px; }
 .baseline { stroke: var(--axis); stroke-width: 1; }
 .bar { fill: var(--bar); }
 .bar.on { opacity: 0.72; }
+/* cigarette columns, when the unit is cigs */
+.cig-paper { fill: #ffffff; stroke: var(--axis); stroke-width: 0.75; }
+.cig-filter { fill: #dc9a52; }
+.cig-band { stroke: #b87332; stroke-width: 1; }
+.cig-ember { fill: #f2551f; }
+.cig-ash { fill: #9a9aa0; }
+.cigs .key-bar { width: 6px; height: 14px; border-radius: 1.5px; border: 0.75px solid var(--axis);
+  background: linear-gradient(to top, #dc9a52 0 34%, #ffffff 34% 78%, #f2551f 78% 90%, #9a9aa0 90%); }
+@media (prefers-color-scheme: dark) { .cig-paper { stroke: none; } .cigs .key-bar { border-color: transparent; } }
 .limit-line { fill: none; stroke: var(--limit); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .avg-line { fill: none; stroke: var(--avg); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .avg-dot { fill: var(--avg); stroke: var(--page); stroke-width: 2; }
